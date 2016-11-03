@@ -12,6 +12,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/bwmarrin/discordgo"
+	"github.com/jasonlvhit/gocron"
 )
 
 var (
@@ -23,6 +24,11 @@ var (
 
 	//Token
 	authToken string
+
+	// fresh milk guild and channel IDs
+	freshMilk = "237317207217012737"
+	glamtrash = "238798619858173963"
+	sss       = "238805318577029121"
 
 	//autotranslate emojis
 	leftAT  = "<:left:240181451876859904>"
@@ -38,11 +44,11 @@ var (
 // 	return
 // }
 
-func handleMacro(s *discordgo.Session, m *discordgo.MessageCreate, msg []string, guild *discordgo.Guild) {
+func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string, guild *discordgo.Guild) {
 	switch msg[0] {
 	case "/at":
 		newMsg := leftAT + msg[1] + rightAT
-		sendMessage(s, m, newMsg, "autotranslated")
+		sendMessage(s, m.ChannelID, newMsg, "autotranslated")
 
 		// until discord decides to add permissions to edit others' messages, this cannot be done
 		// _, err := s.ChannelMessageEdit(m.ChannelID, m.ID, newMsg)
@@ -66,18 +72,32 @@ func handleMacro(s *discordgo.Session, m *discordgo.MessageCreate, msg []string,
 		case 3:
 			newMsg = mogeko + " Go **left**, もげ!"
 		}
-		sendMessage(s, m, newMsg, "aqua")
+		sendMessage(s, m.ChannelID, newMsg, "aqua")
+	case "/draw":
+		draw(s, m.ChannelID)
 	case "/info":
 		newMsg := "My commands: **/aqua**: Aquapolis helper. \r\n"
 		newMsg += "**/at {message}**: I'll reply with " + leftAT + "{message}" + rightAT + ".\r\n"
+		newMsg += "**/draw**: Use the Astrologian skill " + leftAT + "Draw" + rightAT + ".\r\n"
 		newMsg += "**/random**: Generates a random number like the FF command.\r\n\r\n"
-		newMsg += "I automatically pin image uploads in the screenshot channel!\r\n"
+		newMsg += "I automatically pin image uploads in the screenshot and glam channels!\r\n"
 		newMsg += "Midebot is written in golang using discordgo, by Cassis Milk of Jenova"
-		sendMessage(s, m, newMsg, "info")
+		sendMessage(s, m.ChannelID, newMsg, "info")
 	case "/random":
 		user := "<@!" + m.Author.ID + ">"
 		newMsg := "Random! " + user + " rolls a 🎲" + fmt.Sprintf("%v", randomNumberGenerator(1000)) + "."
-		sendMessage(s, m, newMsg, "rng")
+		sendMessage(s, m.ChannelID, newMsg, "rng")
+	}
+}
+
+func sendMessage(s *discordgo.Session, cid string, msg string, msgType string) {
+	_, err := s.ChannelMessageSend(cid, msg)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"channel": cid,
+			"message": msg,
+			"err":     err,
+		}).Warning("Failed to send" + msgType + " message")
 	}
 }
 
@@ -92,17 +112,6 @@ func pinSS(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 			return
 		}
-	}
-}
-
-func sendMessage(s *discordgo.Session, m *discordgo.MessageCreate, msg string, msgType string) {
-	_, err := s.ChannelMessageSend(m.ChannelID, msg)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"channel": m.ChannelID,
-			"message": m.ID,
-			"err":     err,
-		}).Warning("Failed to send" + msgType + " message")
 	}
 }
 
@@ -128,6 +137,57 @@ func randomNumberGenerator(n int) (num int) {
 	return num
 }
 
+func draw(s *discordgo.Session, cid string) {
+	card := randomNumberGenerator(23)
+	switch card {
+	case 0, 6, 12:
+		//balance
+		newMsg := "You have drawn a **Balance** card!"
+		sendMessage(s, cid, newMsg, "balance")
+		sendCard(s, "balance.png", cid)
+	case 1, 7, 13, 18, 19:
+		//bole
+		newMsg := "You have drawn a **Bole** card!"
+		sendMessage(s, cid, newMsg, "bole")
+		sendCard(s, "bole.png", cid)
+	case 2, 8, 14, 20:
+		//arrow
+		newMsg := "You have drawn an **Arrow** card!"
+		sendMessage(s, cid, newMsg, "arrow")
+		sendCard(s, "arrow.png", cid)
+	case 3, 9, 15, 21, 22:
+		//spear
+		newMsg := "You have drawn a **Spear** card!"
+		sendMessage(s, cid, newMsg, "spear")
+		sendCard(s, "spear.png", cid)
+	case 4, 10, 16:
+		//ewer
+		newMsg := "You have drawn a **Ewer** card!"
+		sendMessage(s, cid, newMsg, "ewer")
+		sendCard(s, "ewer.png", cid)
+	case 5, 11, 17, 23:
+		//spire
+		newMsg := "You have drawn a **Spire** card!"
+		sendMessage(s, cid, newMsg, "spire")
+		sendCard(s, "spire.png", cid)
+	}
+	return
+}
+
+func sendCard(s *discordgo.Session, name string, cid string) {
+	if name != "" {
+		f, err := os.Open(fmt.Sprintf("ast/%s", name))
+		if err != nil {
+			log.WithFields(log.Fields{
+				"err": err,
+			}).Warning("Failed to upload card.")
+		}
+		defer f.Close()
+		s.ChannelFileSend(cid, name, f)
+		return
+	}
+}
+
 func onGuildCreate(s *discordgo.Session, g *discordgo.GuildCreate) {
 	if g.Guild.Unavailable != nil {
 		return
@@ -144,7 +204,7 @@ func onGuildCreate(s *discordgo.Session, g *discordgo.GuildCreate) {
 
 func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// check ss to pin first, since it won't have command syntax
-	if m.Attachments != nil && m.ChannelID == "238805318577029121" {
+	if (m.Attachments != nil || m.Embeds != nil) && (m.ChannelID == sss || m.ChannelID == glamtrash) {
 		pinSS(s, m)
 	}
 
@@ -176,6 +236,14 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	if m.Content[0] == '/' {
+		handleSlash(s, m, parts, guild)
+	}
+
+	// if m.Content[0] == '!' {
+
+	// }
+
 	// If this is a mention, it should come from the owner (otherwise we don't care)
 	// if len(m.Mentions) > 0 && m.Author.ID == OWNER && len(parts) > 0 {
 	// 	mentioned := false
@@ -191,9 +259,50 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// 	}
 	// 	return
 	// }
-
-	handleMacro(s, m, parts, guild)
 	return
+}
+
+func sendCactpot(s *discordgo.Session) {
+	newMsg := "@everyone Reminder! Jumbo Cactpot drawings are at 10PM!"
+	_, err := s.ChannelMessageSend(freshMilk, newMsg)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"channel": freshMilk,
+			"message": newMsg,
+			"err":     err,
+		}).Warning("Failed to send cactpot message")
+	}
+}
+
+func jumboReminder(s *discordgo.Session) {
+	for {
+		gocron.Every(1).Saturday().At("21:00").Do(sendCactpot, s)
+		_, time := gocron.NextRun()
+		fmt.Println(time)
+
+		<-gocron.Start()
+	}
+	// me making stupid decisions
+
+	// var timeNow time.Time
+	// for {
+	// 	timeNow = time.Now()
+	// 	if timeNow.Weekday() == time.Saturday {
+	// 		if timeNow.Hour() == 21 {
+	// 			newMsg := "@everyone Reminder! Jumbo Cactpot drawings are at 10PM!"
+	// 			_, err := s.ChannelMessageSend(freshMilk, newMsg)
+	// 			if err != nil {
+	// 				log.WithFields(log.Fields{
+	// 					"channel": freshMilk,
+	// 					"message": newMsg,
+	// 					"err":     err,
+	// 				}).Warning("Failed to send cactpot message")
+	// 			}
+	// 		}
+	// 	} else {
+	// 		time.Sleep(time.Hour)
+	// 	}
+	// }
 }
 
 func main() {
@@ -241,6 +350,8 @@ func main() {
 
 	// We're running!
 	log.Info("Mide is ready to go forward and back")
+
+	go jumboReminder(discord)
 
 	// Wait for a signal to quit
 	c := make(chan os.Signal, 1)
