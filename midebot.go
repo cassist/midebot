@@ -25,6 +25,8 @@ var (
 	//Token
 	authToken string
 
+	cactpotTime time.Time
+
 	// fresh milk guild and channel IDs
 	freshMilk = "237317207217012737"
 	glamtrash = "238798619858173963"
@@ -73,11 +75,16 @@ func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string,
 			newMsg = mogeko + " Go **left**, もげ!"
 		}
 		sendMessage(s, m.ChannelID, newMsg, "aqua")
+	case "/cactpot":
+		newMsg := "Cactpot draws are Saturdays at 10pm EST.\r\n"
+		newMsg += "My cactpot reminder is set to go off at " + cactpotTime.Format("Mon Jan 2 15:04:05") + "."
+		sendMessage(s, m.ChannelID, newMsg, "cactpot")
 	case "/draw":
 		draw(s, m.ChannelID)
 	case "/info":
 		newMsg := "My commands: **/aqua**: Aquapolis helper. \r\n"
 		newMsg += "**/at {message}**: I'll reply with " + leftAT + "{message}" + rightAT + ".\r\n"
+		newMsg += "**/cactpot**: I send out a weekly reminder about Jumbo Cactpot. Use this to confirm the reminder time.\r\n"
 		newMsg += "**/draw**: Use the Astrologian skill " + leftAT + "Draw" + rightAT + ".\r\n"
 		newMsg += "**/random**: Generates a random number like the FF command.\r\n\r\n"
 		newMsg += "I automatically pin image uploads in the screenshot and glam channels!\r\n"
@@ -276,9 +283,9 @@ func sendCactpot(s *discordgo.Session) {
 
 func jumboReminder(s *discordgo.Session) {
 	for {
-		gocron.Every(1).Saturday().At("21:00").Do(sendCactpot, s)
-		_, time := gocron.NextRun()
-		fmt.Println(time)
+		gocron.Every(1).Saturday().At("21:55").Do(sendCactpot, s)
+		_, cactpotTime = gocron.NextRun()
+		fmt.Println(cactpotTime)
 
 		<-gocron.Start()
 	}
