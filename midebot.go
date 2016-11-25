@@ -76,7 +76,7 @@ func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string,
 		}
 		sendMessage(s, m.ChannelID, newMsg, "aqua")
 	case "/cactpot":
-		newMsg := "Cactpot draws are Saturdays at 10pm EST.\r\n"
+		newMsg := "Cactpot draws are Saturdays at 9pm EST.\r\n"
 		newMsg += "My cactpot reminder is set to go off at " + cactpotTime.Format("Mon Jan 2 15:04:05") + "."
 		sendMessage(s, m.ChannelID, newMsg, "cactpot")
 	case "/draw":
@@ -270,7 +270,7 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 }
 
 func sendCactpot(s *discordgo.Session) {
-	newMsg := "@everyone Reminder! Jumbo Cactpot drawings are at 10PM!"
+	newMsg := "@everyone Reminder! Jumbo Cactpot drawings are at 9PM!"
 	_, err := s.ChannelMessageSend(freshMilk, newMsg)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -283,7 +283,7 @@ func sendCactpot(s *discordgo.Session) {
 
 func jumboReminder(s *discordgo.Session) {
 	for {
-		gocron.Every(1).Saturday().At("21:55").Do(sendCactpot, s)
+		gocron.Every(1).Saturday().At("20:55").Do(sendCactpot, s)
 		_, cactpotTime = gocron.NextRun()
 		fmt.Println(cactpotTime)
 
