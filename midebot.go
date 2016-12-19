@@ -47,6 +47,7 @@ var (
 // }
 
 func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string, guild *discordgo.Guild) {
+	user := "<@!" + m.Author.ID + ">"
 	switch msg[0] {
 	case "/at":
 		newMsg := leftAT + msg[1] + rightAT
@@ -80,7 +81,7 @@ func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string,
 		newMsg += "My cactpot reminder is set to go off at " + cactpotTime.Format("Mon Jan 2 15:04:05") + "."
 		sendMessage(s, m.ChannelID, newMsg, "cactpot")
 	case "/draw":
-		draw(s, m.ChannelID)
+		draw(s, m.ChannelID, m.Author.ID)
 	case "/info":
 		newMsg := "My commands: **/aqua**: Aquapolis helper. \r\n"
 		newMsg += "**/at {message}**: I'll reply with " + leftAT + "{message}" + rightAT + ".\r\n"
@@ -90,8 +91,10 @@ func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string,
 		newMsg += "I automatically pin image uploads in the screenshot and glam channels!\r\n"
 		newMsg += "Midebot is written in golang using discordgo, by Cassis Milk of Jenova"
 		sendMessage(s, m.ChannelID, newMsg, "info")
+	case "/pray":
+		newMsg := user + " prays solemnly. " + pray
+		sendMessage(s, m.ChannelID, newMsg, "pray")
 	case "/random":
-		user := "<@!" + m.Author.ID + ">"
 		newMsg := "Random! " + user + " rolls a 🎲" + fmt.Sprintf("%v", randomNumberGenerator(1000)) + "."
 		sendMessage(s, m.ChannelID, newMsg, "rng")
 	}
@@ -144,37 +147,38 @@ func randomNumberGenerator(n int) (num int) {
 	return num
 }
 
-func draw(s *discordgo.Session, cid string) {
-	card := randomNumberGenerator(23)
-	switch card {
-	case 0, 6, 12:
+func draw(s *discordgo.Session, cid string, author string) {
+	newMsg := "<@!" + author + "> has drawn a"
+	card := randomNumberGenerator(100)
+	switch {
+	case card <= 9:
 		//balance
-		newMsg := "You have drawn a **Balance** card!"
+		newMsg += " **Balance** card!"
 		sendMessage(s, cid, newMsg, "balance")
 		sendCard(s, "balance.png", cid)
-	case 1, 7, 13, 18, 19:
+	case (card > 9 && card <= 34):
 		//bole
-		newMsg := "You have drawn a **Bole** card!"
+		newMsg += " **Bole** card!"
 		sendMessage(s, cid, newMsg, "bole")
 		sendCard(s, "bole.png", cid)
-	case 2, 8, 14, 20:
+	case (card > 34 && card <= 49):
 		//arrow
-		newMsg := "You have drawn an **Arrow** card!"
+		newMsg += "n **Arrow** card!"
 		sendMessage(s, cid, newMsg, "arrow")
 		sendCard(s, "arrow.png", cid)
-	case 3, 9, 15, 21, 22:
+	case (card > 49 && card <= 64):
 		//spear
-		newMsg := "You have drawn a **Spear** card!"
+		newMsg += " **Spear** card!"
 		sendMessage(s, cid, newMsg, "spear")
 		sendCard(s, "spear.png", cid)
-	case 4, 10, 16:
+	case (card > 64 && card <= 79):
 		//ewer
-		newMsg := "You have drawn a **Ewer** card!"
+		newMsg += " **Ewer** card!"
 		sendMessage(s, cid, newMsg, "ewer")
 		sendCard(s, "ewer.png", cid)
-	case 5, 11, 17, 23:
+	case (card > 79 && card <= 99):
 		//spire
-		newMsg := "You have drawn a **Spire** card!"
+		newMsg += " **Spire** card!"
 		sendMessage(s, cid, newMsg, "spire")
 		sendCard(s, "spire.png", cid)
 	}
