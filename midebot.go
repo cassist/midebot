@@ -13,6 +13,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/bwmarrin/discordgo"
 	"github.com/jasonlvhit/gocron"
+	"github.com/olebedev/when"
+	"github.com/olebedev/when/rules/common"
+	"github.com/olebedev/when/rules/en"
 )
 
 var (
@@ -39,6 +42,9 @@ var (
 	//other emojis
 	pray   = "<:pray:237783447895015424>"
 	mogeko = "<:mogeko:240183110422102016>"
+
+	//time parser
+	w = when.New(nil)
 )
 
 // func handleControlCommand(s *discordgo.Session, m *discordgo.MessageCreate, msg []string, guild *discordgo.Guild) {
@@ -62,6 +68,8 @@ func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string,
 		// 		"err":     err,
 		// 	}).Warning("Failed to autotranslate message")
 		//}
+	case "/alert":
+		reminder(s, m.ChannelID, msg[1], "@everyone")
 	case "/aqua":
 		var newMsg string
 		watdo := randomNumberGenerator(4)
@@ -97,6 +105,8 @@ func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string,
 	case "/random":
 		newMsg := "Random! " + user + " rolls a 🎲" + fmt.Sprintf("%v", randomNumberGenerator(1000)) + "."
 		sendMessage(s, m.ChannelID, newMsg, "rng")
+	case "/remindme":
+		reminder(s, m.ChannelID, msg[1], user)
 	}
 }
 
@@ -216,7 +226,7 @@ func onGuildCreate(s *discordgo.Session, g *discordgo.GuildCreate) {
 func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// check ss to pin first, since it won't have command syntax
 	if (m.Attachments != nil || m.Embeds != nil) && (m.ChannelID == sss || m.ChannelID == glamtrash) {
-		pinSS(s, m)
+		//pinSS(s, m)
 	}
 
 	// eliminate messages that do not match command syntax
@@ -316,6 +326,29 @@ func jumboReminder(s *discordgo.Session) {
 	// }
 }
 
+func reminder(s *discordgo.Session, cid string, msg string, user string) {
+	alarmtime, err := w.Parse(msg, time.Now())
+	if err != nil {
+		sendMessage(s, cid, "Your request has been denied.", "reminder")
+		log.WithFields(log.Fields{
+			"message": msg,
+			"err":     err,
+		}).Warning("Failed to set reminder; cannot understand time")
+	}
+	duration := alarmtime.Time.Sub(time.Now())
+	timer := time.NewTimer(duration)
+	payload := user + " " + msg
+	accepted := "Your request has been accepted!"
+
+	go func() {
+		sendMessage(s, cid, accepted, "reminder")
+		<-timer.C
+		sendMessage(s, cid, payload, "reminder")
+	}()
+
+	return
+}
+
 func main() {
 
 	var (
@@ -347,6 +380,10 @@ func main() {
 		}).Fatal("Failed to create discord session")
 		return
 	}
+
+	// init time parser
+	w.Add(en.All...)
+	w.Add(common.All...)
 
 	discord.AddHandler(onGuildCreate)
 	discord.AddHandler(onMessageCreate)
