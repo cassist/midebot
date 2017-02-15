@@ -91,12 +91,14 @@ func handleSlash(s *discordgo.Session, m *discordgo.MessageCreate, msg []string,
 	case "/draw":
 		draw(s, m.ChannelID, m.Author.ID)
 	case "/info":
-		newMsg := "My commands: **/aqua**: Aquapolis helper. \r\n"
+		newMsg := "My commands: **/alert**: Mentions everyone with the message at a specified time.\r\n"
+		newMsg += "**/aqua**: Aquapolis helper. \r\n"
 		newMsg += "**/at {message}**: I'll reply with " + leftAT + "{message}" + rightAT + ".\r\n"
 		newMsg += "**/cactpot**: I send out a weekly reminder about Jumbo Cactpot. Use this to confirm the reminder time.\r\n"
 		newMsg += "**/draw**: Use the Astrologian skill " + leftAT + "Draw" + rightAT + ".\r\n"
-		newMsg += "**/random**: Generates a random number like the FF command.\r\n\r\n"
-		newMsg += "I automatically pin image uploads in the screenshot and glam channels!\r\n"
+		newMsg += "**/random**: Generates a random number like the FF command.\r\n"
+		newMsg += "**/remindme**: Mentions the user with the message at a specified time.\r\n\r\n"
+		//	newMsg += "I automatically pin image uploads in the screenshot and glam channels!\r\n"
 		newMsg += "Midebot is written in golang using discordgo, by Cassis Milk of Jenova"
 		sendMessage(s, m.ChannelID, newMsg, "info")
 	case "/pray":
@@ -296,8 +298,8 @@ func sendCactpot(s *discordgo.Session) {
 }
 
 func jumboReminder(s *discordgo.Session) {
+	gocron.Every(1).Saturday().At("20:55").Do(sendCactpot, s)
 	for {
-		gocron.Every(1).Saturday().At("20:55").Do(sendCactpot, s)
 		_, cactpotTime = gocron.NextRun()
 		fmt.Println(cactpotTime)
 
@@ -399,7 +401,7 @@ func main() {
 	// We're running!
 	log.Info("Mide is ready to go forward and back")
 
-	go jumboReminder(discord)
+	//	go jumboReminder(discord)
 
 	// Wait for a signal to quit
 	c := make(chan os.Signal, 1)
